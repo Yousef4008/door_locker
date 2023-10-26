@@ -1,0 +1,321 @@
+/*	______________________________________________________________________________
+   |																			  |
+   | APP: Human Machine Interface ECU Application								  |
+   |																			  |
+   | File Name: APP.h															  |
+   |																			  |
+   | Description: Source file for the HMI ECU Application						  |
+   |																			  |
+   | Author: Youssif Hossam														  |
+   |______________________________________________________________________________|
+ */
+
+#include "LIB/std_types.h"
+#include "MCAL/USART/usart.h"
+#include "MCAL/GPIO/gpio.h"
+#include "HAL/KEYPAD/keypad.h"
+#include "HAL/LCD/lcd.h"
+#include "MCAL/TIMER1/timer1.h"
+#include "util/delay.h"
+#include "avr/io.h"
+#include "commands.h"
+
+/*______________________________________________________________________________
+ |                               Functions Prototypes                           |
+ |______________________________________________________________________________|
+ */
+
+/*
+ * Description :
+ -> Function responsible for transfer the password to Control ECU
+ */
+void send_password(uint8 *password_arr);
+
+/*
+ * Description :
+ -> Function responsible for increment timer1 ticks
+ */
+void timer1_tick(void);
+
+/*
+ * Description :
+ -> Function responsible for showing alarm screen
+ */
+void Alarm_mode(void);
+
+/*
+ * Description :
+ -> Function responsible for taking the password from the user using keypad
+ */
+void take_password_from_user(void);
+
+/*______________________________________________________________________________
+ |                         Global Variables Deceleration                        |
+ |______________________________________________________________________________|
+ */
+uint8 Timer1Ticks = 0 , MultiUsedCounter = 0 , PasswordBuff[5];
+Timer1_ConfigType Timer1Config = {0 , 31250 , COMPARE_MODE , CLK_256_PRESCALER} ;
+
+/*______________________________________________________________________________
+ |                       		  Main Function                       		    |
+ |______________________________________________________________________________|
+ */
+int main (void){
+
+	uint8 NumberOfTries = 0 ;	/* to count the no of wrong passwords will be entered */
+	uint8 PasswordCorrectnessFlag = 0 ;	/* This flag is true when a correct password is entered */
+	/* This flag is true if the two password which user enters equal each other while creating new password */
+	uint8 PasswordsMatchingFlag = 1 ;
+	uint8 PasswordSetFlag = 0;	/* This flag is true when the password is successfully created */
+	uint8 LCD_BlankPattern[] = 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F;
+	/* The configuration structure of the UART protocol */
+	UART_ConfigType USART_MyConfig = {EIGHT_BIT_MODE , DISABLED_PARITY , ONE_STOP_BIT , 9600};
+	SREG |= 1<<7;	/* Enabling Global Interrupts Service */
+
+	LCD_init();
+	UART_init(&USART_MyConfig);
+	Timer1_setCallBack(timer1_tick);
+
+	UART_sendByte(IS_PASSWORD_SET);		/* Asking Control ECU if the password was created or not? */
+
+	if(UART_recieveByte() == SETTED)
+		PasswordSetFlag = 1;
+
+	while(1){
+
+		if(PasswordSetFlag){			/* If the password was created */
+
+			NumberOfTries = 0;			/* Reseting number of tries */
+			LCD_clearScreen();
+
+			/* Showing the menu */
+			LCD_displayStringRowColumn(0,0,"+ : Open Door");
+			LCD_displayStringRowColumn(1,0,"- : Change Pass");
+
+			switch(KEYPAD_getPressedKey()){
+
+			case '+':
+				/* Asking for the password while the user didn't enter correct password
+				 * have remaining attempts */
+
+				do{
+
+					PasswordCorrectnessFlag = 0;	/* Reseting password correctness flag */
+
+					LCD_clearScreen();
+					LCD_displayString("Enter Password:");
+					LCD_moveCursor(1,0);
+					LCD_displayString("     ");
+
+					/* Getting Control ECU ready to receive the password */
+					UART_sendByte(TAKE_MAIN_PASSWORD);
+
+					/* Taking the password from the user using keypad */
+					take_password_from_user();
+
+					/* Sending the password to Control ECU to check it */
+					send_password(PasswordBuff);
+
+					_delay_ms(15);
+
+					if(UART_recieveByte() == CORRECT_PASSWORD){	/* If the password is correct */
+
+						PasswordCorrectnessFlag = 1;
+
+						/* Ask Control ECU to unlock the door */
+						UART_sendByte(OPEN_DOOR);
+
+						Timer1_init(&Timer1Config);
+
+						LCD_clearScreen();
+						LCD_displayStringRowColumn(0,0,"Unlocking...");
+						while(Timer1Ticks != 15);
+						Timer1Ticks = 0;
+						Timer1_deInit();
+						Timer1_init(&Timer1Config);
+						LCD_displayStringRowColumn(0,0,"Holding...  ");
+						while(Timer1Ticks != 3);
+						Timer1Ticks = 0;
+						Timer1_deInit();
+						Timer1_init(&Timer1Config);
+						LCD_displayStringRowColumn(0,0,"Locking...  ");
+						while(Timer1Ticks != 15);
+						Timer1Ticks = 0;
+						Timer1_deInit();
+
+					}
+					else {	/* If the password is wrong */
+
+						NumberOfTries++;
+
+						LCD_clearScreen();
+						LCD_displayString("Wrong Password!");
+						LCD_moveCursor(1,0);
+						LCD_displayString("Tries Remain: ");
+						LCD_intgerToString(3-NumberOfTries);
+						_delay_ms(2000);
+
+					}
+				}
+				while((NumberOfTries < 3) && !PasswordCorrectnessFlag);
+
+				/* If the user exhausted all attempts */
+				if(PasswordCorrectnessFlag == 0){
+
+					UART_sendByte(ALARM_MODE);	/* Ask Control ECU to make alarm */
+					Alarm_mode();
+				}
+				break;
+
+			case '-':
+				/* Asking for the password while the user didn't enter correct password
+				 * have remaining attempts */
+
+				do{
+					PasswordCorrectnessFlag = 0;		/* Reseting password correctness flag */
+
+					LCD_clearScreen();
+					LCD_displayString("Enter Password:");
+					LCD_moveCursor(1,0);
+					LCD_displayString("     ");
+					PasswordsMatchingFlag = 1;
+					_delay_ms(500);
+
+					/* Getting Control ECU ready to receive the password */
+					UART_sendByte(TAKE_MAIN_PASSWORD);
+
+					/* Taking the password from the user using keypad */
+					take_password_from_user();
+
+					/* Sending the password to Control ECU to check it */
+					send_password(PasswordBuff);
+
+					_delay_ms(15);
+
+					if(UART_recieveByte() == CORRECT_PASSWORD){		/* If the password is correct */
+
+						PasswordSetFlag = 0;		/* Make the user able to create new password */
+						PasswordCorrectnessFlag = 1;
+					}
+
+					else{	/* If the password is wrong */
+
+						NumberOfTries++;
+
+						LCD_clearScreen();
+						LCD_displayString("Wrong Password!");
+						LCD_moveCursor(1,0);
+						LCD_displayString("Tries Remain: ");
+						LCD_intgerToString(3-NumberOfTries);
+						_delay_ms(2000);
+
+					}
+				}
+				while((NumberOfTries < 3) && !PasswordCorrectnessFlag);
+
+				if(PasswordCorrectnessFlag == 0){
+
+					UART_sendByte(ALARM_MODE);		/* Ask Control ECU to make alarm */
+					Alarm_mode();
+				}
+				break;
+
+			}
+		}
+
+		else{
+
+			LCD_clearScreen();
+			LCD_displayString("Enter New Pass:");
+			LCD_moveCursor(1,0);
+			LCD_displayString("     ");
+
+			PasswordsMatchingFlag = 1;
+
+			/* Getting Control ECU ready to receive the password */
+			UART_sendByte(TAKE_THE_FIRST_PASSWORD);
+
+			/* Taking the password from the user using keypad */
+			take_password_from_user();
+
+			/* Sending the password to Control ECU to check it */
+			send_password(PasswordBuff);
+
+			LCD_clearScreen();
+			LCD_displayString("Re-Enter Pass:");
+			LCD_moveCursor(1,0);
+			LCD_displayString("     ");
+			_delay_ms(15);
+
+			/* Getting Control ECU ready to receive the password */
+			UART_sendByte(TAKE_THE_SECOND_PASSWORD);
+
+			/* Taking the password from the user using keypad */
+			take_password_from_user();
+
+			/* Sending the password to Control ECU to check it */
+			send_password(PasswordBuff);
+
+			_delay_ms(15);
+
+			/* Asking Control ECU if the two password are identical or not? */
+			UART_sendByte(ARE_THEM_MATCHED);
+			PasswordsMatchingFlag = UART_recieveByte();
+
+			if(PasswordsMatchingFlag == MATCHED){	/* If identical */
+
+				PasswordSetFlag = 1;
+				PasswordsMatchingFlag = 0;
+			}
+
+			else {	/* If not identical */
+				LCD_clearScreen();
+				LCD_displayString("   Unmatched!  ");
+				_delay_ms(1000);
+			}
+
+		}
+
+	}
+
+	return 0;
+
+}
+
+void send_password(uint8 *password_arr){
+	for(int i = 0 ; i < 5 ; i++){
+		UART_sendByte(password_arr[i]);
+		_delay_ms(15);
+	}
+
+}
+void timer1_tick(void){
+	Timer1Ticks++;
+}
+void Alarm_mode(void){
+	LCD_clearScreen();
+	Timer1_init(&Timer1Config);
+	while(Timer1Ticks != 60){
+		LCD_displayString("    WARNING!    ");
+		_delay_ms(500);
+		LCD_clearScreen();
+		_delay_ms(500);
+	}
+	Timer1Ticks = 0;
+	Timer1_deInit();
+}
+void take_password_from_user(void){
+	for(MultiUsedCounter = 0 ; MultiUsedCounter < 5 ; MultiUsedCounter++){
+		PasswordBuff[MultiUsedCounter] = KEYPAD_getPressedKey();
+		if(PasswordBuff[MultiUsedCounter] >= '0' && PasswordBuff[MultiUsedCounter] <= '9'){
+			LCD_displayCharacter(PasswordBuff[MultiUsedCounter]);
+			_delay_ms(500);
+			LCD_moveCursor(1,5+MultiUsedCounter);
+			LCD_displayCharacter('*');
+		}
+		else
+			MultiUsedCounter--;
+		_delay_ms(15);
+	}
+	while(KEYPAD_getPressedKey() != '=');
+}

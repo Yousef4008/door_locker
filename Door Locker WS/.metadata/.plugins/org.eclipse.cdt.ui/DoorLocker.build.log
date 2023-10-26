@@ -1,0 +1,40 @@
+00:23:33 **** Incremental Build of configuration Debug for project DoorLocker ****
+make all 
+Building file: ../HMI_ECU.c
+Invoking: AVR Compiler
+avr-gcc -Wall -g2 -gstabs -O0 -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -std=gnu99 -funsigned-char -funsigned-bitfields -mmcu=atmega32 -DF_CPU=8000000UL -MMD -MP -MF"HMI_ECU.d" -MT"HMI_ECU.o" -c -o "HMI_ECU.o" "../HMI_ECU.c"
+In file included from ../HMI_ECU.c:14:
+c:/winavr-20100110/lib/gcc/../../avr/include/util/delay.h:90:3: warning: #warning "Compiler optimizations disabled; functions from <util/delay.h> won't work as designed"
+Finished building: ../HMI_ECU.c
+ 
+Building target: DoorLocker.elf
+Invoking: AVR C Linker
+avr-gcc -Wl,-Map,DoorLocker.map -mmcu=atmega32 -o "DoorLocker.elf"  ./MCAL/USART/usart.o  ./MCAL/TIMER1/timer1.o  ./MCAL/TIMER0_PWM/timer0_pwm.o  ./MCAL/I2C/i2c.o  ./MCAL/GPIO/gpio.o  ./HAL/LCD/lcd.o  ./HAL/L293D/l293d.o  ./HAL/KEYPAD/keypad.o  ./HAL/EXT_EEPROM/ext_eeprom.o  ./HAL/BUZZER/buzzer.o  ./\ Control_ECU.o ./HMI_ECU.o   
+Finished building target: DoorLocker.elf
+ 
+Invoking: AVR Create Extended Listing
+avr-objdump -h -S DoorLocker.elf  >"DoorLocker.lss"
+Finished building: DoorLocker.lss
+ 
+Create Flash image (ihex format)
+avr-objcopy -R .eeprom -R .fuse -R .lock -R .signature -O ihex DoorLocker.elf  "DoorLocker.hex"
+Finished building: DoorLocker.hex
+ 
+Invoking: Print Size
+avr-size --format=avr --mcu=atmega32 DoorLocker.elf
+AVR Memory Usage
+----------------
+Device: atmega32
+
+Program:   18164 bytes (55.4% Full)
+(.text + .data + .bootloader)
+
+Data:        210 bytes (10.3% Full)
+(.data + .bss + .noinit)
+
+
+Finished building: sizedummy
+ 
+
+00:23:34 Build Finished. 0 errors, 1 warnings. (took 437ms)
+

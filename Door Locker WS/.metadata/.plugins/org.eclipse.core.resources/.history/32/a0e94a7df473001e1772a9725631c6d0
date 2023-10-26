@@ -1,0 +1,22 @@
+/*
+ * commands.h
+ *
+ *  Created on: Oct 25, 2023
+ *      Author: Youssif Hossam
+ */
+
+#ifndef COMMANDS_H_
+#define COMMANDS_H_
+
+#define TAKE_THE_FIRST_PASSWORD			'A'
+#define TAKE_THE_SECOND_PASSWORD		'B'
+#define ARE_THEM_MATCHED				'C'
+#define TAKE_THE_MAIN_PASSWORD			'D'
+#define OPEN_DOOR						'E'
+#define CHANGE_PASS						'F'
+#define CORRECT_PASSWORD				'G'
+#define WRONG_PASSWORD					'H'
+#define ALARM_MODE						'I'
+
+
+#endif /* COMMANDS_H_ */

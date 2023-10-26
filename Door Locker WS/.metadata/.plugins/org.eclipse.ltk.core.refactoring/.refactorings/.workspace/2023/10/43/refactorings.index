@@ -1,0 +1,13 @@
+1698170511187	Delete 2 resources
+1698272631442	Rename resource 'DoorLocker'
+1698272651327	Delete resource 'HMI_ECU/ Control_ECU.c'
+1698272688650	Rename resource 'ECU'
+1698273738118	Delete resource 'Control_ECU'
+1698273742004	Rename resource 'AAA'
+1698325121832	Delete resource 'HMI_ECU/HAL/L293D'
+1698325124168	Delete resource 'HMI_ECU/HAL/EXT_EEPROM'
+1698325125732	Delete resource 'HMI_ECU/HAL/BUZZER'
+1698325130772	Delete resource 'HMI_ECU/MCAL/I2C'
+1698325185581	Delete resource 'HMI_ECU/MCAL/TIMER0_PWM'
+1698325194516	Delete resource 'Control_ECU/HAL/KEYPAD'
+1698325198280	Delete resource 'Control_ECU/HAL/LCD'

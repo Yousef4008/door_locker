@@ -1,0 +1,19 @@
+/*
+ *  Control_ECU.c
+ *
+ *  Created on: Oct 25, 2023
+ *      Author: Youssif Hossam
+ */
+
+
+#include "LIB/std_types.h"
+#include "HAL/BUZZER/buzzer.h"
+#include "HAL/EXT_EEPROM/ext_eeprom.h"
+#include "HAL/L293D/l293d.h"
+#include "MCAL/I2C/i2c.h"
+#include "MCAL/USART/usart.h"
+#include "MCAL/TIMER1/timer1.h"
+
+int main2(void){
+	return 0;
+}

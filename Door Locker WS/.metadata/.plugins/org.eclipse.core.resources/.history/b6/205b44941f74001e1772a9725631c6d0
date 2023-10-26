@@ -1,0 +1,165 @@
+/*	______________________________________________________________________________
+   |																			  |
+   | APP: Control ECU Application												  |
+   |																			  |
+   | File Name: APP.h															  |
+   |																			  |
+   | Description: Source file for the Control ECU Application					  |
+   |																			  |
+   | Author: Youssif Hossam														  |
+   |______________________________________________________________________________|
+ */
+
+#include "LIB/std_types.h"
+#include "MCAL/USART/usart.h"
+#include "MCAL/GPIO/gpio.h"
+#include "MCAL/TIMER1/timer1.h"
+#include "MCAL/I2C/i2c.h"
+#include "HAL/BUZZER/buzzer.h"
+#include "HAL/EXT_EEPROM/ext_eeprom.h"
+#include "HAL/L293D/l293d.h"
+#include "util/delay.h"
+#include "avr/io.h"
+#include "commands.h"
+
+/*______________________________________________________________________________
+ |                               Functions Prototypes                           |
+ |______________________________________________________________________________|
+ */
+
+/*
+ * Description :
+ -> Function responsible for receiving the password from HMI ECU
+ */
+void receive_password(uint8 *PasswordArr);
+
+/*
+ * Description :
+ -> Function responsible for increment timer1 ticks
+ */
+void timer1_tick(void);
+
+uint8 Timer1Ticks = 0;
+Timer1_ConfigType Timer1Config = {0 , 31250 , COMPARE_MODE , CLK_256_PRESCALER} ;
+
+/*______________________________________________________________________________
+ |                       		  Main Function                       		    |
+ |______________________________________________________________________________|
+ */
+
+int main (void){
+
+
+	uint8 Password_Arr1[5] , Password_Arr2[5] ;		/* Password buffer arrays */
+	uint8 matching_flag ;	/* This flag is true if the two password which user enters equal each other while creating new password */
+	uint8 password_buff ,flag;
+	uint8 recieved_message , counter;
+	UART_ConfigType USART_MyConfig = {EIGHT_BIT_MODE , DISABLED_PARITY , ONE_STOP_BIT , 9600};
+	I2C_ConfigType	I2C_MyConfig = {0x01 , BAUDRATE_400KHZ};
+	SREG |= 1<<7;
+	UART_init(&USART_MyConfig);
+	I2C_init(&I2C_MyConfig);
+	L293D_Init(CHANNEL1_MODE);
+	BUZZER_init();
+	GPIO_setupPinDirection(PORTA_ID , PIN0_ID , PIN_OUTPUT);
+	GPIO_writePin(PORTA_ID , PIN0_ID , 0);
+	Timer1_setCallBack(timer1_tick);
+	EEPROM_writeByte(0xFF , 0);
+	_delay_ms(15);
+	while(1){
+		recieved_message = UART_recieveByte();
+		switch(recieved_message){
+		case IS_PASSWORD_SET:
+			flag = 0;
+			EEPROM_readByte(0xFF , &flag);
+			if(flag)
+				UART_sendByte(SETTED);
+			else
+				UART_sendByte(NOT_SETTED);
+			break;
+
+		case TAKE_THE_FIRST_PASSWORD :
+			receive_password(Password_Arr1);
+			break;
+
+		case TAKE_THE_SECOND_PASSWORD :
+			receive_password(Password_Arr2);
+			break;
+
+		case ARE_THEM_MATCHED :
+			matching_flag = 1;
+			for(counter = 0 ; counter < 5 ; counter++){
+				if(Password_Arr1[counter] != Password_Arr2[counter]){
+					matching_flag = 0;
+					break;
+				}
+			}
+			if(matching_flag){
+				UART_sendByte(MATCHED);
+				EEPROM_writeByte(0xFF , 1);
+				_delay_ms(15);
+				for(counter = 0 ; counter < 5 ; counter++){
+					EEPROM_writeByte(counter , Password_Arr1[counter]);
+					_delay_ms(10);
+				}
+			}
+			else
+				UART_sendByte(UNMATCHED);
+			_delay_ms(10);
+			break;
+
+		case TAKE_MAIN_PASSWORD :
+			matching_flag = 1;
+			receive_password(Password_Arr1);
+			for(counter = 0 ; counter < 5 ; counter++){
+				EEPROM_readByte(counter , &password_buff);
+				if(Password_Arr1[counter] != password_buff)
+					matching_flag = 0;
+				_delay_ms(10);
+			}
+			if(matching_flag)
+				UART_sendByte(CORRECT_PASSWORD);
+			else
+				UART_sendByte(WRONG_PASSWORD);
+			break;
+
+		case OPEN_DOOR	:
+			Timer1_init(&Timer1Config);
+			L293D_Rotate(1 , CW , 100);
+			while(Timer1Ticks != 15);
+			Timer1Ticks = 0;
+			Timer1_deInit();
+			Timer1_init(&Timer1Config);
+			L293D_Rotate(1 , OFF , 0);
+			while(Timer1Ticks != 3);
+			Timer1Ticks = 0;
+			Timer1_deInit();
+			Timer1_init(&Timer1Config);
+			L293D_Rotate(1 , A_CW , 100);
+			while(Timer1Ticks != 15);
+			Timer1Ticks = 0;
+			Timer1_deInit();
+			L293D_Rotate(1 , OFF , 0);
+			break;
+
+		case ALARM_MODE :
+			Timer1_init(&Timer1Config);
+			BUZZER_on();
+			while(Timer1Ticks != 60);
+			Timer1Ticks = 0;
+			Timer1_deInit();
+			BUZZER_off();
+			break;
+		}
+	}
+	return 0;
+}
+void receive_password(uint8 *PasswordArr){
+	for(uint8 i = 0 ; i < 5 ; i++){
+		PasswordArr[i] = UART_recieveByte();
+		_delay_ms(10);
+	}
+}
+void timer1_tick(void){
+	Timer1Ticks++;
+}
