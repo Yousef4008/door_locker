@@ -19,6 +19,6 @@ The Control_ECU takes charge of all the processing and decision-making within th
   - Observe the Control_ECU making intelligent decisions based on user inputs.
 
 # Project Structure
-HMI_ECU_Code/: Contains the code for the HMI_ECU microcontroller.
-Control_ECU_Code/: Holds the code for the Control_ECU microcontroller.
-Circuit_Diagram/: Provides the circuit diagram for connecting the components.
+HMI_ECU_Code: Contains the code for the HMI_ECU microcontroller.
+Control_ECU_Code: Holds the code for the Control_ECU microcontroller.
+Circuit_Diagram: Provides the circuit diagram for connecting the components.
