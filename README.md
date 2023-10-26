@@ -8,7 +8,7 @@ The HMI_ECU serves as the interface between the user and the system. It features
 The Control_ECU takes charge of all the processing and decision-making within the system. It incorporates EEPROM for data storage, a buzzer for audible alerts, and a DC motor for controlling the door. This ECU handles tasks like password verification, door opening, and activation of the system alarm.
 
 # Getting Started
-1. Clone the Repository:
+1. Clone the Repository
 2. Hardware Setup:
   - Connect the components based on the provided circuit diagram.
   - Ensure proper connections between the MC1 (HMI_ECU) and MC2 (Control_ECU).
